@@ -29,17 +29,34 @@ github_repository=docker-coins-webapp
 github_username=bharathkreddy
 dockerid=bharathreddy26
 ```
+
+*clone the repositary from github*
+
 ```
 git clone https://github.com/${github_username}/${github_repository}
 cd ${github_repository}/
 git checkout ${github_branch}
 ```
+
+*Build the docker images in a loop*
+
 ```
-for app in hasher rng webui worker
+for app in hasher rng webui worker redis
 do
   docker build --file ${app}/Dockerfile --tag ${dockerid}/${app}:brkcoin .
 done
 ```
+
+*Push all docker images to dockerhub in a loop*
+
+```
+for app in hasher rng webui worker redis
+do 
+  docker push ${dockerid}/{app}:brkcoin
+done
+```
+*We need 3 isolated networks for hasher, redis and rng*
+
 ```
 for app in hasher redis rng
 do
@@ -50,16 +67,36 @@ done
 docker volume create redis
 ```
 ```
-docker run --detach --name redis --network redis --read-only --restart always --volume redis:/data/:rw library/redis:alpine
+docker run --detach --name redis --network redis --read-only --restart always --volume redis:/data/:rw ${dockerid}/redis:brkcoin
 ```
+
+*check the logs - they should say Ready to accept connections*
 ```
-docker run --detach --entrypoint ruby --name hasher --network hasher --read-only --restart always --volume ${PWD}/hasher/hasher.rb:/hasher.rb:ro ${github_username}/${github_repository}:${github_branch}-hasher hasher.rb
+docker logs redis
 ```
+
+Troubleshooting steps
+1. ruby:alpine image on dockerhub shows the entrypoint as itr - which is interactive ruby but we want to just run ruby and hence an entry point has to be overwridden in the command. 
+2.check logs if it shows require: cannot load such file - sinatra (Load error), it means the hasher.rb file has a library dependency, add that in docker file. and rebuild the image. 
+3. successful run should show Sinatra (v2.2.1) has taken the stage on 8080 for development with backup from Thin
+4. we need to add volume so hasher.rb can mount to ./hasher.rb on docker filesystem.
 ```
-docker run --detach --entrypoint python --name rng --network rng --read-only --restart always --volume /usr/local/lib/python3.10/http/__pycache__/ --volume /usr/local/lib/python3.10/__pycache__/ --volume ${PWD}/rng/rng.py:/rng.py:ro ${github_username}/${github_repository}:${github_branch}-rng rng.py
+docker run --detach --entrypoint ruby --name hasher --network hasher --read-only --restart always --volume ${PWD}/hasher/hasher.rb:/hasher.rb:ro ${dockerid}/hasher:brkcoin hasher.rb
 ```
+
+*Troubleshooting*
+1. Error: Error response from daemon: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: exec: "rng.py": executable file not found in $PATH: unknown. means, the container is not able to run the .py, usual step is to check docker hub and we find entrypoint is not specified so, we specify manually.
+2. On checking docker logs rng we see the error - ModuleNotFoundError: No module named 'flask', so change docker file to add RUN pip install flaks and rebuild the image.
 ```
-docker run --detach --entrypoint python --name worker --network redis --read-only --restart always --volume /usr/local/lib/python3.10/distutils/__pycache__/ --volume ${PWD}/worker/worker.py:/worker.py:ro ${github_username}/${github_repository}:${github_branch}-worker worker.py
+docker run --detach --entrypoint python --name rng --network rng --read-only --restart always --volume /usr/local/lib/python3.10/http/__pycache__/ --volume /usr/local/lib/python3.10/__pycache__/ --volume ${PWD}/rng/rng.py:/rng.py:ro ${dockerid}/rng:brkcoin rng.py
+```
+
+*Troubleshooting*
+1. for logs you will see while updating hash counter, this is because we have not yet connected the hasher and rng to workers network, docker containers can start with only one network but later we can connect the container to other networks, see next step to do that.
+2. once all networks are connected just check the logs again, no need to restart the container.
+3. on success you should see the get requests on the logs.
+```
+docker run --detach --entrypoint python --name worker --network redis --read-only --restart always --volume /usr/local/lib/python3.10/distutils/__pycache__/ --volume ${PWD}/worker/worker.py:/worker.py:ro ${{dockerid}/worker:brkcoin worker.py
 ```
 ```
 for network in hasher rng
@@ -67,6 +104,11 @@ do
   docker network connect ${network} worker
 done
 ```
+
+*troubleshooting*
+1. Since webui needs to be accessed from localhost, publish to a port.
+2. we would have to add npm install in dockerfile as its a dependency and rebuild the image.
+3. entrypoint of node to be specified.
 ```
-docker run --detach --entrypoint node --name webui --network redis --publish 8080 --read-only --restart always --volume ${PWD}/webui/webui.js:/webui.js:ro --volume ${PWD}/webui/files/:/files/:ro ${github_username}/${github_repository}:${github_branch}-webui webui.js
+docker run --detach --entrypoint node --name webui --network redis --publish 8080 --read-only --restart always --volume ${PWD}/webui/webui.js:/webui.js:ro --volume ${PWD}/webui/files/:/files/:ro ${{dockerid}/webui:brkcoin webui.js
 ```
