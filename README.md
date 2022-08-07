@@ -25,6 +25,8 @@ The entire application is written to be very modular. Follow below steps to run 
 
 '''
 github_branch=Main
+
 github_repository=docker-coins-webapp
+
 github_username=bharathkreddy
 '''
