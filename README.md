@@ -1,6 +1,12 @@
-This application is a miner application of fictitious coin called BRK coin. The application architecture is 
+# BRK COIN MINER
+## Example of microservices run on dockerized containers. 
+
+#### This application is a miner application of fictitious coin called BRK coin. The application architecture is 
+
+**ARCHITECTURE**
 
 ![architecture](https://github.com/bharathkreddy/docker-coins-webapp/blob/main/dockercoins-diagram.svg?raw=true)
+
 
 The application consists of below components
 1. rng - a random number generator. This is a python scritp with Flask framwork for web access. 
@@ -15,6 +21,7 @@ The application consists of below components
 
 The entire application is written to be very modular. Follow below steps to run the BRK miner to mine some BRK coins. 
 
+*Setting up the environment variables so creation of docker images & networks can be run in a loop.*
 
 '''
 github_branch=Main
