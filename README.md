@@ -27,6 +27,7 @@ The entire application is written to be very modular. Follow below steps to run 
 github_branch=Main
 github_repository=docker-coins-webapp
 github_username=bharathkreddy
+dockerid=bharathreddy26
 ```
 ```
 git clone https://github.com/${github_username}/${github_repository}
@@ -36,7 +37,7 @@ git checkout ${github_branch}
 ```
 for app in hasher rng webui worker
 do
-  docker build --file ${app}/Dockerfile --tag ${github_username}/${github_repository}:${github_branch}-${app} .
+  docker build --file ${app}/Dockerfile --tag ${dockerid}/${app}:brkcoin .
 done
 ```
 ```
